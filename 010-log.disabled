@@ -1,0 +1,4 @@
+LoadModule log_config_module libexec/apache24/mod_log_config.so
+LogFormat "%{Host}i: %h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" proxylog
+CustomLog /tmp/proxylog proxylog
+ErrorLog /tmp/proxylog

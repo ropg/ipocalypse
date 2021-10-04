@@ -1,0 +1,177 @@
+#!/bin/sh
+
+email=rop@gonggri.jp
+
+# You want to uncomment this and use an email address that reaches you.
+# If you don't, "--register-unsafely-without-email" will be used, but
+# as the certbot man page says:
+#
+#    Specifying this flag enables registering an account with no email
+#    address. This is strongly discouraged, because you will be unable
+#    to receive notice about impending expiration or revocation of your
+#    certificates or problems with your Certbot installation that will
+#    lead to failure to renew.
+
+[ -z "$email" ] && email="--register-unsafely-without-email" || email="-m $email"
+
+webroot=/usr/local/www/webroot
+
+sitesdir=/usr/local/etc/apache24/Includes
+
+progname=`basename $0`
+
+RELOAD="/usr/local/sbin/apachectl reload"
+
+usage() {
+    echo "Usage: $progname default <domain>"
+    echo "       $progname proxy <domain> <server>"
+    echo "       $progname forward <domain> <url>"
+    echo "       $progname list [<selector>]"
+    echo "       $progname delete <domain>"
+    echo "       $progname edit <domain>"
+    echo "       $progname log"
+    exit
+}
+
+stop_log() {
+    [ -e $sitesdir/010-log.conf ] && mv $sitesdir/010-log.conf $sitesdir/010-log.disabled
+    $RELOAD
+    rm /tmp/proxylog
+}
+
+get_cert() {
+    if /usr/local/bin/certbot certonly \
+                              --webroot \
+                              --agree-tos \
+                              --no-eff-email \
+                              $email \
+                              -d $1 \
+                              $wwwalias \
+                              -w $webroot; then
+        echo "Certicate obtained."
+    else
+        echo "Certificate acquisition failed. Does $1 not resolve here maybe? Exiting."
+        exit
+    fi          
+}
+
+case "$1" in
+
+    list) 
+        grep "# domain " $sitesdir/*.conf | grep "$2" | sed -e 's/^.*# //'
+    ;;
+
+    delete)
+        [ $# -ne 2 ] && usage
+        /usr/local/bin/certbot revoke --cert-name $2
+        rm $sitesdir/$2.conf
+
+        $RELOAD
+    ;;
+
+    edit)
+        [ $# -ne 2 ] && usage
+
+        if [ ! -f $sitesdir/$2.conf ]; then
+            echo "domain not found: $2"
+            exit
+        fi
+
+	cp $sitesdir/$2.conf /tmp/domain-$2.conf
+        $EDITOR $sitesdir/$2.conf
+        if diff $sitesdir/$2.conf /tmp/domain-$2.conf > /dev/null; then
+            echo "No changes made."
+        else
+            $RELOAD
+	fi
+
+	rm /tmp/domain-$2.conf
+    ;;
+
+    log)
+        [ $# -ne 1 ] && usage
+        [ -e $sitesdir/010-log.disabled ] && mv $sitesdir/010-log.disabled $sitesdir/010-log.conf
+	$RELOAD
+        trap stop_log 1 2 3 6
+        touch /tmp/proxylog
+	tail -f /tmp/proxylog
+    ;;
+
+    default)
+        [ $# -ne 2 ] && usage
+
+        get_cert $2
+
+        cat <<- EOF > $sitesdir/020-default.conf
+	# domain default $2
+
+	<VirtualHost *:443>
+	    ServerName $2
+	    SSLEngine On
+	    SSLCertificateFile "etc/letsencrypt/live/$2/cert.pem"
+	    SSLCertificateKeyFile "etc/letsencrypt/live/$2/privkey.pem"
+	    SSLCertificateChainFile "etc/letsencrypt/live/$2/chain.pem"
+	</VirtualHost>
+	EOF
+
+        $RELOAD
+    ;;
+
+    proxy)
+        [ $# -ne 3 ] && usage
+
+        get_cert $2
+        
+        cat <<- EOF > $sitesdir/$2.conf
+	# domain proxy $2 $3
+
+	<VirtualHost *:443>
+	    ServerName $2
+	    SSLEngine On
+	    SSLCertificateFile "etc/letsencrypt/live/$2/cert.pem"
+	    SSLCertificateKeyFile "etc/letsencrypt/live/$2/privkey.pem"
+	    SSLCertificateChainFile "etc/letsencrypt/live/$2/chain.pem"
+	    ProxyRequests Off
+	    ProxyPreserveHost On
+	    RequestHeader set X-Forwarded-Proto "https"
+	    RequestHeader set X-Forwarded-Port "443"
+	    ProxyPass "/" "http://$3/"
+	    ProxyPassReverse "/" "http://$3/"
+	</VirtualHost>
+	EOF
+
+        $RELOAD
+    ;;
+
+    forward)
+        [ $# -ne 3 ] && usage
+
+        get_cert $2
+
+        cat <<- EOF > $sitesdir/$2.conf
+	# domain forward $2 $3
+	<VirtualHost *:80>
+	    ServerName $2
+	    RewriteEngine On
+	    RewriteRule ^(.*)$ $3 [R,L]
+	</VirtualHost>
+
+	<VirtualHost *:443>
+	    ServerName $2
+	    SSLEngine On
+	    SSLCertificateFile "etc/letsencrypt/live/$2/cert.pem"
+	    SSLCertificateKeyFile "etc/letsencrypt/live/$2/privkey.pem"
+	    SSLCertificateChainFile "etc/letsencrypt/live/$2/chain.pem"
+	    RewriteEngine On
+	    RewriteRule ^(.*)$ $3 [R,L]
+	</VirtualHost>
+	EOF
+
+        $RELOAD
+    ;;
+
+    *)
+        usage
+    ;;
+
+esac
