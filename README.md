@@ -288,7 +288,7 @@ Usage: domain default <domain>
 
 ### Default certificate
 
-Our proxy will present a certificate as soon as an SSL connection is made. Because it doesn't know yet what website the other side wants to see, it presents the certificate of the first virtual host. To avoid the confusion of a random ceryificate of one of the websites being presented, we use `domain` to create a special file called `020-default.conf` in the `Includes` directory that we can be sure will be loaded before any of the other domains because they are loaded in alphabetical order. I used the name of the proxy jail:
+Our proxy will present a certificate as soon as an SSL connection is made. Because it doesn't know yet what website the other side wants to see, it presents the certificate of the first virtual host. To avoid the confusion of a random certificate of one of the websites being presented, we use `domain` to create a special file called `020-default.conf` in the `Includes` directory that we can be sure will be loaded before any of the other domains because they are loaded in alphabetical order. I used the name of the proxy jail:
 
 ```
 [root@wwwproxy ~]# domain default wwwproxy.rop.nl
