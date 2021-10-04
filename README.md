@@ -38,7 +38,7 @@ There are ways to have the certificates live on the backend servers, but our pro
 
 * The backend connections use http, meaning they are unencrypted. So backend servers should be local to the host and not traverse the internet.
 
-* Certificates can't be stolen from the backend jails (which may have all sorts of vulnerable scripts running). Conversely, the wwwproxy jail should not get get compromised as all certificates are there.
+* Certificates can't be stolen from the backend jails (which may have all sorts of vulnerable scripts running). Conversely, the wwwproxy jail better not get compromised as all certificates are there.
 
 * More obscure: Backend servers do not get any information about client certificates, so if anything you serve uses client certificates, that'll probably break. Maybe this can be fixed with the client certs on the proxy and then passing on certain headers, but I don't use client certs so I haven't played with that. If you do need that and get it working, please tell me.
 
