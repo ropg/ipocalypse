@@ -67,7 +67,7 @@ ifconfig_em0_ipv6="inet6 2a01:4f9:2a:2388::1/64"
 ipv6_defaultrouter="fe80::1%em0"
 ```
 
-Jails when they start bring up their own IP aliases, so their IPs do not need to in `rc.conf`. My use 10.42.1.x IPv4 addresses, plus an IPv6 address if I want them to reachable directly using IPv6. The IPv6 address I use are part of my assigned IPv6 /64 which is `2a01:4f9:2a:2388`. I add `:1xxx:`, a one plus all 3 digits of the last octet of the private IP-address as decimal, just so that I don't have to remember two addresses for the same jail. So a jail that has `10.42.1.2` as it's IPv4 address on the `lo42` interface gets `2a01:4f9:2a:2388:1002::1` as IPv6 address like so:
+Jails when they start bring up their own IP aliases, so their IPs do not need to in `rc.conf`. Mine use an 10.42.1.x IPv4 address, plus an IPv6 address if I want them to reachable directly using IPv6. The IPv6 addresses I use for jails are part of my assigned IPv6 /64 which is `2a01:4f9:2a:2388`. I add `:1xxx:`, a one plus all 3 digits of the last octet of the private IP-address as decimal, just so that I don't have to remember two addresses for the same jail. So a jail that has `10.42.1.2` as it's IPv4 address on the `lo42` interface gets `2a01:4f9:2a:2388:1002::1` as IPv6 address like so:
 
 ```
 ezjail-admin create wwwproxy "lo42|10.42.1.2,em0|2a01:4f9:2a:2388:1002::1"
